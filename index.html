@@ -4,8 +4,7 @@
   <title>Brainrot Link Scanner</title>
   <style>
     body { background: #111; color: #eee; font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-    h1 { font-size: 48px; margin-bottom: 10px; color: #FFF; text-shadow: 2px 2px 8px #000; }
-    textarea { width: 80%; height: 120px; font-size: 14px; padding: 10px; border-radius: 8px; }
+    textarea { width: 80%; height: 150px; font-size: 14px; padding: 10px; border-radius: 8px; }
     button { margin-top: 20px; padding: 15px 30px; font-size: 18px; background: #2c7df7; border: none; color: white; border-radius: 10px; cursor: pointer; }
     #output { margin-top: 20px; width: 85%; max-width: 800px; margin-left: auto; margin-right: auto; text-align: left; font-size: 16px; }
     .good { color: #00ff68; }
@@ -14,48 +13,60 @@
 </head>
 <body>
 
-<h1>Brainrot Server Scanner</h1>
+<h1>Brainrot Link Scanner</h1>
 
-<button onclick="scanServers()">Scan Active Servers</button>
+<textarea id="links" placeholder="Paste Roblox VIP/private server links here..."></textarea><br>
+<button onclick="scanLinks()">Scan Links</button>
+
 <div id="output"></div>
 
 <script>
-  const PLACE_ID = "109983668079237";
-
-  async function scanServers() {
+  async function scanLinks() {
     const output = document.getElementById("output");
-    output.innerHTML = "Fetching server list...<br><br>";
+    const links = document.getElementById("links").value.trim().split("\n");
 
-    try {
-      const res = await fetch(`https://games.roblox.com/v1/games/${PLACE_ID}/servers/Public?sortOrder=Asc&limit=100`);
-      const data = await res.json();
+    output.innerHTML = "Scanning links...<br><br>";
 
-      if (!data.data || data.data.length === 0) {
-        output.innerHTML = "<span class='bad'>❌ No public servers found — maybe only VIP/private servers or listing disabled.</span>";
-        return;
+    for (let link of links) {
+      if (!link.includes("roblox.com")) {
+        output.innerHTML += `<span class='bad'>❌ Invalid link format: ${link}</span><br>`;
+        continue;
       }
 
-      // Show a header
-      output.innerHTML = `<b>Total servers fetched: ${data.data.length}</b><br><br>`;
+      try {
+        // Extract placeId from the link if possible
+        let placeIdMatch = link.match(/games\/(\d+)/);
+        let placeId = placeIdMatch ? placeIdMatch[1] : null;
 
-      data.data.forEach(srv => {
-        const players = srv.playing;
-        const max = srv.maxPlayers;
-        const serverId = srv.id;
-        const online = srv.isRunnning;  // or srv.ping ok etc
-
-        if (players === 0) {
-          output.innerHTML += `<span class="good">✔️ EMPTY server — id: ${serverId} (0 / ${max})</span><br>`;
-        } else if (players < 3) {
-          output.innerHTML += `<span class="good">⚠️ LOW-PLAYER server — id: ${serverId} (${players} / ${max})</span><br>`;
-        } else {
-          output.innerHTML += `<span class="bad">❌ Populated server — id: ${serverId} (${players} / ${max})</span><br>`;
+        if (!placeId) {
+          output.innerHTML += `<span class='bad'>❌ Cannot detect PlaceID from: ${link}</span><br>`;
+          continue;
         }
-      });
 
-    } catch (e) {
-      output.innerHTML = `<span class="bad">❌ Error fetching server list. Maybe Roblox blocked API request.</span>`;
-      console.error(e);
+        const url = `https://games.roblox.com/v1/games/${placeId}/servers/Public?sortOrder=Asc&limit=100`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!data || !data.data) {
+          output.innerHTML += `<span class='bad'>❌ API error scanning: ${link}</span><br>`;
+          continue;
+        }
+
+        // Check if any server is empty/low-pop
+        let empty = data.data.some(s => s.playing === 0);
+        let low = data.data.some(s => s.playing > 0 && s.playing < 3);
+
+        if (empty) {
+          output.innerHTML += `<span class='good'>✔ EMPTY server found → ${link}</span><br>`;
+        } else if (low) {
+          output.innerHTML += `<span class='good'>⚠ LOW PLAYER server → ${link}</span><br>`;
+        } else {
+          output.innerHTML += `<span class='bad'>❌ No good servers → ${link}</span><br>`;
+        }
+
+      } catch (e) {
+        output.innerHTML += `<span class='bad'>❌ Error scanning: ${link}</span><br>`;
+      }
     }
   }
 </script>
