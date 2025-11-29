@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Brainrot Link Scanner</title>
+  <style>
+    body { background: #111; color: #eee; font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+    h1 { font-size: 48px; margin-bottom: 10px; color: #FFF; text-shadow: 2px 2px 8px #000; }
+    textarea { width: 80%; height: 120px; font-size: 14px; padding: 10px; border-radius: 8px; }
+    button { margin-top: 20px; padding: 15px 30px; font-size: 18px; background: #2c7df7; border: none; color: white; border-radius: 10px; cursor: pointer; }
+    #output { margin-top: 20px; width: 85%; max-width: 800px; margin-left: auto; margin-right: auto; text-align: left; font-size: 16px; }
+    .good { color: #00ff68; }
+    .bad { color: #ff6060; }
+  </style>
+</head>
+<body>
+
+<h1>Brainrot Server Scanner</h1>
+
+<button onclick="scanServers()">Scan Active Servers</button>
+<div id="output"></div>
+
+<script>
+  const PLACE_ID = "109983668079237";
+
+  async function scanServers() {
+    const output = document.getElementById("output");
+    output.innerHTML = "Fetching server list...<br><br>";
+
+    try {
+      const res = await fetch(`https://games.roblox.com/v1/games/${PLACE_ID}/servers/Public?sortOrder=Asc&limit=100`);
+      const data = await res.json();
+
+      if (!data.data || data.data.length === 0) {
+        output.innerHTML = "<span class='bad'>❌ No public servers found — maybe only VIP/private servers or listing disabled.</span>";
+        return;
+      }
+
+      // Show a header
+      output.innerHTML = `<b>Total servers fetched: ${data.data.length}</b><br><br>`;
+
+      data.data.forEach(srv => {
+        const players = srv.playing;
+        const max = srv.maxPlayers;
+        const serverId = srv.id;
+        const online = srv.isRunnning;  // or srv.ping ok etc
+
+        if (players === 0) {
+          output.innerHTML += `<span class="good">✔️ EMPTY server — id: ${serverId} (0 / ${max})</span><br>`;
+        } else if (players < 3) {
+          output.innerHTML += `<span class="good">⚠️ LOW-PLAYER server — id: ${serverId} (${players} / ${max})</span><br>`;
+        } else {
+          output.innerHTML += `<span class="bad">❌ Populated server — id: ${serverId} (${players} / ${max})</span><br>`;
+        }
+      });
+
+    } catch (e) {
+      output.innerHTML = `<span class="bad">❌ Error fetching server list. Maybe Roblox blocked API request.</span>`;
+      console.error(e);
+    }
+  }
+</script>
+
+</body>
+</html>
